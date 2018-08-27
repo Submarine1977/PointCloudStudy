@@ -135,7 +135,7 @@ bool CLASFile::Save()
 bool CLASFile::SaveTo(const char *strFileName)
 {
 	FILE *f;
-	unsigned int i;
+	unsigned int i, j;
 	fopen_s(&f, strFileName, "wb");
 	if (f == NULL)
 	{
@@ -176,11 +176,30 @@ bool CLASFile::SaveTo(const char *strFileName)
 		fclose(f);
 		return false;
 	}
+	unsigned char buffer_zero[64];
+	memset(buffer_zero, 0, sizeof(buffer_zero));
+	int d = 0;
 	for (i = 0; i < m_pPointBuffer.size() - 1; i++)
 	{
-		fwrite(m_pPointBuffer[i], m_lhHeader.point_data_record_length, BUFFER_SIZE, f);
+		for (j = 0; j < BUFFER_SIZE; j++)
+		{
+			if (memcmp(m_pPointBuffer[i] + j * m_lhHeader.point_data_record_length, buffer_zero, m_lhHeader.point_data_record_length) == 0)
+			{
+				d++;
+				continue;
+			}
+			fwrite(m_pPointBuffer[i] + j * m_lhHeader.point_data_record_length, m_lhHeader.point_data_record_length, 1, f);
+		}
 	}
-	fwrite(m_pPointBuffer[i], m_lhHeader.point_data_record_length, (m_lhHeader.number_point_records - i * BUFFER_SIZE), f);
+	for (j = 0; j < m_lhHeader.number_point_records + d - i * BUFFER_SIZE; j++)
+	{
+		if (memcmp(m_pPointBuffer[i] + j * m_lhHeader.point_data_record_length, buffer_zero, m_lhHeader.point_data_record_length) == 0)
+		{
+			d++;
+			continue;
+		}
+		fwrite(m_pPointBuffer[i] + j * m_lhHeader.point_data_record_length, m_lhHeader.point_data_record_length, 1, f);
+	}
 	fclose(f);
 	return true;
 }
